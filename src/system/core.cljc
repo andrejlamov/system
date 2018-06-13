@@ -34,10 +34,9 @@
 
 (defn connect0 [{:keys [prev graph] :as acc} x]
   (cond
-    ;; assume vector with keywords can only appear first
-    (vector? x) (let [new-graph (reduce #(assoc %1 %2 (as/chan)) graph x)
-                      chs (map (partial get new-graph) x)]
-                  {:prev chs  :graph new-graph})
+    (and (nil? prev) (vector? x)) (let [new-graph (reduce #(assoc %1 %2 (as/chan)) graph x)
+                                        chs (map (partial get new-graph) x)]
+                                    {:prev chs  :graph new-graph})
     (map? x) (do (as/pipe prev (:in x))
                  {:prev (:out x) :graph graph})
     ;; is first in row?
