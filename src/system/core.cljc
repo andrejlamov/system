@@ -32,7 +32,7 @@
     (as/tap mc out)
     out))
 
-(defn connect-row [{:keys [prev graph] :as acc} x]
+(defn connect0 [{:keys [prev graph] :as acc} x]
   (cond
     ;; assume vector with keywords can only appear first
     (vector? x) (let [new-graph (reduce #(assoc %1 %2 (as/chan)) graph x)
@@ -53,6 +53,6 @@
 
 (defn connect [rows]
   (:graph (reduce
-           #(reduce connect-row (assoc %1 :prev nil) %2)
+           #(reduce connect0 (assoc %1 :prev nil) %2)
            {:prev nil :graph {}}
            rows)))
