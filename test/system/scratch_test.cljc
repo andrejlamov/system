@@ -15,13 +15,13 @@
   (fn [v] (* 2 v)))
 
 (t/deftest scratch
-  (let [schema-a [[:in (node sum-fn) (node double-fn) :out]]
+  (let [scheme-a [[:in (node sum-fn) (node double-fn) :out]]
 
-        schema-b [[:in (node inc) :out]]
-        connected-b (connect schema-b)
+        scheme-b [[:in (node inc) :out]]
+        connected-b (connect scheme-b)
 
         scheme [
-                [[:in :feedback] first-or-all schema-a mult :out1 :feedback]
+                [[:in :feedback] first-or-all scheme-a mult :out1 :feedback]
                 [:out1 :out]
                 [:out1 connected-b :out2]
                 ]
