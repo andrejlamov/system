@@ -15,7 +15,7 @@
   (fn [v] (* 2 v)))
 
 (t/deftest scratch
-  (let [scheme-a [[:in (s/node sum-fn) (s/node double-fn) :out]]
+  (let [scheme-a [[:in (s/node 100 sum-fn) (s/node 100 double-fn) :out]]
 
         scheme-b [[:in (s/node inc) :out]]
         connected-b (s/connect scheme-b)

@@ -2,16 +2,19 @@
   (:require [clojure.core.async :as as]
             [clojure.core.match :refer [match]]))
 
-(defn node [body-fn]
-  (let [in (as/chan)
-        out (as/chan)]
-    (as/go-loop []
-      (->> in
-           (as/<!)
-           (body-fn)
-           (as/>! out))
-      (recur))
-    {:in in :out out}))
+(defn node
+  ([body-fn] (node 1 body-fn))
+  ([n body-fn]
+   (let [in (as/chan)
+         out (as/chan n)]
+     (dotimes [_ n]
+       (as/go-loop []
+         (->> in
+              (as/<!)
+              (body-fn)
+              (as/>! out))
+         (recur)))
+       {:in in :out out})))
 
 (defn first-or-all [init-chs]
   (let [out (as/chan)]
