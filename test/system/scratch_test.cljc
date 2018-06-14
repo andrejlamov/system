@@ -15,10 +15,11 @@
   (fn [v] (* 2 v)))
 
 (t/deftest scratch
-  (let [scheme [
+  (let [sub-graph (connect [[:in (node inc) :out]])
+        scheme [
                 [[:in :feedback] first-or-all (node sum-fn) (node double-fn) mult :out1 :feedback]
                 [:out1 :out]
-                [:out1 (node inc) :out2]
+                [:out1 sub-graph :out2]
                 ]
         graph (connect scheme)]
 
