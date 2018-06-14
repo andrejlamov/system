@@ -1,6 +1,6 @@
 (ns system.scratch-test
   (:require
-   [system.core :refer :all]
+   [system.core :as s]
    [clojure.core.match :refer [match]]
    [clojure.test :as t]
    [clojure.core.async :as as]))
@@ -15,29 +15,29 @@
   (fn [v] (* 2 v)))
 
 (t/deftest scratch
-  (let [scheme-a [[:in (node sum-fn) (node double-fn) :out]]
+  (let [scheme-a [[:in (s/node sum-fn) (s/node double-fn) :out]]
 
-        scheme-b [[:in (node inc) :out]]
-        connected-b (connect scheme-b)
+        scheme-b [[:in (s/node inc) :out]]
+        connected-b (s/connect scheme-b)
 
         scheme [
-                [[:in :feedback] first-or-all scheme-a mult :out1 :feedback]
+                [[:in :feedback] s/first-or-all scheme-a s/mult :out1 :feedback]
                 [:out1 :out]
                 [:out1 connected-b :out2]
                 ]
-        graph (connect scheme)]
+        graph (s/connect scheme)]
 
     (as/put! (:in graph) 5)
 
-    (t/is (= 10 (<!!? (:out graph))))
-    (t/is (= 11 (<!!? (:out2 graph))))
+    (t/is (= 10 (s/<!!? (:out graph))))
+    (t/is (= 11 (s/<!!? (:out2 graph))))
 
     (as/put! (:in graph) 5)
 
-    (t/is (= 30 (<!!? (:out graph))))
-    (t/is (= 31 (<!!? (:out2 graph))))
+    (t/is (= 30 (s/<!!? (:out graph))))
+    (t/is (= 31 (s/<!!? (:out2 graph))))
 
     (as/put! (:in graph) 5)
 
-    (t/is (= 70 (<!!? (:out graph))))
-    (t/is (= 71 (<!!? (:out2 graph))))))
+    (t/is (= 70 (s/<!!? (:out graph))))
+    (t/is (= 71 (s/<!!? (:out2 graph))))))
