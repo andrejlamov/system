@@ -1,29 +1,38 @@
 (ns system.scratch-test
   (:require
    [system.core :refer :all]
+   [clojure.core.match :refer [match]]
    [clojure.test :as t]
    [clojure.core.async :as as]))
 
 (def sum-fn
-  (fn [[a b]]
-    (let [r (+ a b)]
-      '(println "sum. args:" a b "return: " r)
-      r)))
+  (fn [list]
+    (match list
+           [a] a
+           [a b] (+ a b))))
 
 (def double-fn
-  (fn [v]
-    (let [r (* 2 v)]
-      '(println "double. args:" v "return: " r)
-      r)))
+  (fn [v] (* 2 v)))
 
 (t/deftest scratch
   (let [scheme [
-                [[:in1 :in2] all (node sum-fn) (node double-fn) mult :out1]
-                [:out1 tap (node inc) :out3]
-                [:out1 tap (node dec) :out4]
+                [[:in :feedback] first-or-all (node sum-fn) (node double-fn) mult :out1 :feedback]
+                [:out1 :out]
+                [:out1 (node inc) :out2]
                 ]
         graph (connect scheme)]
-    (as/put! (:in1 graph) 3)
-    (as/put! (:in2 graph) 2)
-    (t/is (= 11 (as/<!! (:out3 graph))))
-    (t/is (= 9 (as/<!! (:out4 graph))))))
+
+    (as/put! (:in graph) 5)
+
+    (t/is (= 10 (<!!? (:out graph))))
+    (t/is (= 11 (<!!? (:out2 graph))))
+
+    (as/put! (:in graph) 5)
+
+    (t/is (= 30 (<!!? (:out graph))))
+    (t/is (= 31 (<!!? (:out2 graph))))
+
+    (as/put! (:in graph) 5)
+
+    (t/is (= 70 (<!!? (:out graph))))
+    (t/is (= 71 (<!!? (:out2 graph))))))
