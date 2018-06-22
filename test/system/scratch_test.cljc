@@ -14,30 +14,35 @@
 (def double-fn
   (fn [v] (* 2 v)))
 
-(t/deftest scratch
-  (let [scheme-a [[:in (s/node 100 sum-fn) (s/node 100 double-fn) :out]]
+(t/deftest reducer-test
+  (let [scheme [[:in
+                 (s/reducer (fn [acc v] (if (nil? acc) v (+ v acc))))
+                 s/mult
+                 :out1]
+                [:out1 (s/mapper inc) :out2]
+                [:out2 (s/async-mapper (fn [v ch] (as/put! ch v))) :out3]
+                [:out1 :out]]
 
-        scheme-b [[:in (s/node inc) :out]]
-        connected-b (s/connect scheme-b)
+        graph (s/connect scheme)
+        in (:in graph)
+        out (:out graph)
+        out2 (:out3 graph)
+        ]
 
-        scheme [
-                [[:in :feedback] s/first-or-all scheme-a s/mult :out1 :feedback]
-                [:out1 :out]
-                [:out1 connected-b :out2]
-                ]
-        graph (s/connect scheme)]
+    (as/put! in 10)
+    (t/is (= 10 (s/<!!? out)))
+    (t/is (= 11 (s/<!!? out2)))
 
-    (as/put! (:in graph) 5)
+    (as/put! in 5)
+    (t/is (= 15 (s/<!!? out)))
+    (t/is (= 16 (s/<!!? out2)))
 
-    (t/is (= 10 (s/<!!? (:out graph))))
-    (t/is (= 11 (s/<!!? (:out2 graph))))
+    (as/put! in 1)
+    (t/is (= 16 (s/<!!? out)))
+    (t/is (= 17 (s/<!!? out2)))))
 
-    (as/put! (:in graph) 5)
 
-    (t/is (= 30 (s/<!!? (:out graph))))
-    (t/is (= 31 (s/<!!? (:out2 graph))))
 
-    (as/put! (:in graph) 5)
 
-    (t/is (= 70 (s/<!!? (:out graph))))
-    (t/is (= 71 (s/<!!? (:out2 graph))))))
+
+

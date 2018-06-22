@@ -2,31 +2,45 @@
   (:require [clojure.core.async :as as]
             [clojure.core.match :refer [match]]))
 
-(defn node
-  ([body-fn] (node 1 body-fn))
-  ([n body-fn]
-   (let [in (as/chan)
-         out (as/chan n)]
-     (dotimes [_ n]
-       (as/go-loop []
-         (->> in
-              (as/<!)
-              (body-fn)
-              (as/>! out))
-         (recur)))
-       {:in in :out out})))
+(defn async-reducer
+  [body-fn]
+  (let [in (as/chan)
+        out (as/chan)]
+    (as/go-loop [acc0 nil]
+      (let [d (as/<! in)
+            acc1 (body-fn acc0 d out)]
+        (recur acc1)))
+    {:in in :out out}))
 
-(defn first-or-all [init-chs]
-  (let [out (as/chan)]
-    (as/go-loop [chs init-chs vls []]
-      (let [[vl ch] (as/alts! chs :priority true)
-            rest-chs (remove #(= ch %) chs)
-            acc-vls (conj vls vl)]
-        (if (or (= (first init-chs) ch) (empty? rest-chs))
-          (do (as/>! out acc-vls)
-              (recur init-chs []))
-          (recur rest-chs acc-vls))))
-    out))
+(defn reducer [body-fn]
+  (let [in (as/chan)
+        out (as/chan)]
+    (as/go-loop [acc0 nil]
+      (let [d (as/<! in)
+            acc1 (body-fn acc0 d)]
+        (as/>! out acc1)
+        (recur acc1)))
+    {:in in :out out}))
+
+(defn mapper [body-fn]
+  (let [in (as/chan)
+        out (as/chan)]
+    (as/go-loop []
+      (->> in
+           (as/<!)
+           (body-fn)
+           (as/>! out))
+      (recur))
+    {:in in :out out}))
+
+(defn async-mapper [body-fn]
+  (let [in (as/chan)
+        out (as/chan)]
+    (as/go-loop []
+      (let [d (as/<! in)]
+        (body-fn d out))
+      (recur))
+    {:in in :out out}))
 
 (defn <!!?
   ([chan]
