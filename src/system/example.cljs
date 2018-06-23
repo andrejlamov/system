@@ -87,9 +87,7 @@
                              (println "ticker shutdown")))))))
 
 (defonce graph (atom {}))
-
-(when (not (empty? @graph))
- (as/close! (:state.in @graph)))
+(s/close @graph)
 
 (def scheme
   [

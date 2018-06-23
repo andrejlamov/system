@@ -139,4 +139,11 @@
      (as/tap in out)
      (as/pipe in out))))
 
+(defn close [graph]
+  (doseq [c (vals graph)]
+    (try
+      ;; TODO: Check if channel to avoid exception handling.
+      (as/close! c)
+      #?(:cljs (catch js/Object identity)
+         :clj (catch Exception identity)))))
 
