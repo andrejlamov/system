@@ -5,16 +5,7 @@
    [clojure.test :as t]
    [clojure.core.async :as as]))
 
-(def sum-fn
-  (fn [list]
-    (match list
-           [a] a
-           [a b] (+ a b))))
-
-(def double-fn
-  (fn [v] (* 2 v)))
-
-(t/deftest reducer-test
+(t/deftest simple-graph
   (let [scheme [[:in
                  (s/reducer (fn [acc v] (if (nil? acc) v (+ v acc))))
                  s/mult
@@ -40,9 +31,3 @@
     (as/put! in 1)
     (t/is (= 16 (s/<!!? out)))
     (t/is (= 17 (s/<!!? out2)))))
-
-
-
-
-
-

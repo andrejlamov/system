@@ -3,44 +3,71 @@
             [clojure.core.match :refer [match]]))
 
 (defn async-reducer
-  [body-fn]
-  (let [in (as/chan)
-        out (as/chan)]
-    (as/go-loop [acc0 nil]
-      (let [d (as/<! in)
-            acc1 (body-fn acc0 d out)]
-        (recur acc1)))
-    {:in in :out out}))
+  ([body-fn] (async-reducer nil body-fn))
+  ([name body-fn]
+   (let [in (as/chan)
+         out (as/chan)]
+     (as/go-loop [acc0 nil]
+       (if-some [d (as/<! in)]
+         (let [acc1 (body-fn acc0 d out)]
+           (recur acc1))
+         (do
+           (println name "shutdown")
+           (as/close! out))))
+     {:in in :out out :name name})))
 
-(defn reducer [body-fn]
-  (let [in (as/chan)
-        out (as/chan)]
-    (as/go-loop [acc0 nil]
-      (let [d (as/<! in)
-            acc1 (body-fn acc0 d)]
-        (as/>! out acc1)
-        (recur acc1)))
-    {:in in :out out}))
+(defn reducer
+  ([body-fn] (reducer nil body-fn))
+  ([name body-fn]
+   (let [in (as/chan)
+         out (as/chan)]
+     (as/go-loop [acc0 nil]
+       (if-some [d (as/<! in)]
+         (let [acc1 (body-fn acc0 d)]
+           (as/>! out acc1)
+           (recur acc1))
+         (do
+           (println name "shutdown")
+           (as/close! out))))
+     {:in in :out out :name name})))
 
-(defn mapper [body-fn]
-  (let [in (as/chan)
-        out (as/chan)]
-    (as/go-loop []
-      (->> in
-           (as/<!)
-           (body-fn)
-           (as/>! out))
-      (recur))
-    {:in in :out out}))
+(defn mapper
+  ([body-fn] (mapper nil body-fn))
+  ([name body-fn]
+   (let [in (as/chan)
+         out (as/chan)]
+     (as/go-loop []
+       (if-some [d (as/<! in)]
+         (do
+           (as/>! out (body-fn d))
+           (recur))
+         (do
+           (println name "shutdown")
+           (as/close! out))))
+     {:in in :out out :name name})))
 
-(defn async-mapper [body-fn]
-  (let [in (as/chan)
-        out (as/chan)]
-    (as/go-loop []
-      (let [d (as/<! in)]
-        (body-fn d out))
-      (recur))
-    {:in in :out out}))
+(defn async-mapper
+  ([body-fn] (async-mapper nil body-fn))
+  ([name body-fn]
+   (let [in (as/chan)
+         out (as/chan)]
+     (as/go-loop []
+       (if-some [d (as/<! in)]
+         (do
+           (body-fn d out)
+           (recur))
+         (do
+           (println name "shutdown")
+           (as/close! out))))
+     {:in in :out out :name name})))
+
+(defn source
+  ([body-fn] (async-mapper nil body-fn))
+  ([name body-fn]
+   (let [out (as/chan)
+         in (as/chan)]
+     (body-fn in out)
+     {:in in :out out :name name})))
 
 (defn <!!?
   ([chan]
@@ -59,49 +86,57 @@
 
 (defn connect [rows]
   (:graph (reduce
-           #(reduce connect-nodes (assoc %1 :prev nil) %2)
-           {:prev nil :graph {}}
+           (fn [acc x]
+             (println " ")
+             (reduce connect-nodes (assoc acc :prev nil) x))
+           {:prev nil :graph {} :vis []}
            rows)))
 
-(defn connect-nodes [{:keys [prev graph] :as acc} x]
-  (match [prev x]
+(defn name [node]
+  (cond (keyword? node) node
+        (map? node) (:name node)
+        :else "channel"))
 
-         [_   [[& xs]]]
-         (connect-nodes acc (connect x))
+(defn connect-nodes [{:keys [prev graph vis] :as acc} x]
+  (let [res (match [prev x]
+                   [nil (_ :guard map?)]
+                   (do
+                     (print \" (:name x) \" " -> ")
+                     {:prev (:out x) :graph graph})
 
-         [nil [& xs]]
-         (let [new-graph (reduce #(assoc %1 %2 (as/chan)) graph x)
-               chs (map (partial get new-graph) x)]
-           {:prev chs  :graph new-graph})
+                   [nil (_ :guard keyword?)]
+                   (do
+                     (print \" x \" " -> ")
+                     (if (contains? graph x)
+                       (let [in (get graph x)]
+                         {:prev (connect-channels in)  :graph graph})
+                       (let [c (as/chan)]
+                         {:prev c :graph (assoc graph x c)})))
 
-         [nil (_ :guard keyword?)]
-         (if (contains? graph x)
-           (let [in (get graph x)]
-             {:prev (connect-channels in)  :graph graph})
-           (let [c (as/chan)]
-             {:prev c :graph (assoc graph x c)}))
+                   [_ (_ :guard keyword?)]
+                   (do (print \" x \" " -> ")
+                       (if (contains? graph x)
+                         (let [out (get graph x)]
+                           {:prev (connect-channels prev out) :graph graph})
+                         {:prev prev :graph (assoc graph x prev)}))
 
-         [_ (_ :guard keyword?)]
-         (if (contains? graph x)
-           (let [out (get graph x)]
-             {:prev (connect-channels prev out) :graph graph})
-           {:prev prev :graph (assoc graph x prev)})
+                   [_ (_ :guard map?)]
+                   (do
+                     (print \" (:name x) \" " -> ")
+                     (connect-channels prev (:in x))
+                     {:prev (:out x) :graph graph})
 
-         [_ (_ :guard map?)]
-         (do (connect-channels prev (:in x))
-             {:prev (:out x) :graph graph})
+                   [_ (_ :guard fn?)]
+                   {:prev (x prev) :graph graph}
 
-         [_ (_ :guard fn?)]
-         {:prev (x prev) :graph graph}
-
-         :else acc))
+                   :else acc)]
+    res))
 
 (defn connect-channels
   ([in] (connect-channels in (as/chan)))
   ([in out]
    (if (satisfies? clojure.core.async/Mult in)
      (as/tap in out)
-     (as/pipe in out))
-   out))
+     (as/pipe in out))))
 
 

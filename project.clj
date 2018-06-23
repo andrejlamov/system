@@ -7,7 +7,9 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/clojurescript "1.10.238"]
                  [org.clojure/core.match "0.3.0-alpha5"]
-                 [org.clojure/core.async  "0.4.474"]]
+                 [org.clojure/core.async  "0.4.474"]
+                 [rum "0.11.2"]]
+
 
   :plugins [[lein-figwheel "0.5.16"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
@@ -21,7 +23,7 @@
                 ;; The presence of a :figwheel configuration here
                 ;; will cause figwheel to inject the figwheel client
                 ;; into your build
-                :figwheel {:on-jsload "system.core/on-js-reload"
+                :figwheel {:on-jsload "system.example/on-js-reload"
                            ;; :open-urls will pop open your application
                            ;; in the default browser once Figwheel has
                            ;; started and compiled your application.
@@ -29,7 +31,7 @@
                            ;;:open-urls ["http://localhost:3449/index.html"]
                            }
 
-                :compiler {:main system.core
+                :compiler {:main system.example
                            :asset-path "js/compiled/out"
                            :output-to "resources/public/js/compiled/system.js"
                            :output-dir "resources/public/js/compiled/out"
@@ -43,7 +45,7 @@
                {:id "min"
                 :source-paths ["src"]
                 :compiler {:output-to "resources/public/js/compiled/system.js"
-                           :main system.core
+                           :main system.example
                            :optimizations :advanced
                            :pretty-print false}}]}
 
