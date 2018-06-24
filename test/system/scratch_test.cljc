@@ -26,8 +26,22 @@
 
     (as/put! in 5)
     (t/is (= 15 (s/<!!? out)))
-    (t/is (= 16 (s/<!!? out2)))
 
-    (as/put! in 1)
     (t/is (= 16 (s/<!!? out)))
     (t/is (= 17 (s/<!!? out2)))))
+
+(t/deftest scheme-variations
+  (let [a (s/mapper "a" inc)
+        b (s/mapper "b" inc)
+        c (s/mapper "c" inc)
+        d (s/mapper "d" inc)
+        e (s/mapper "e" inc)
+        graph (s/connect [[:in a b]
+                          [b d]
+                          [d c s/mult :tap]
+                          [:tap :out1]
+                          [:tap e]
+                          ])]
+    (as/put! (:in graph) 10)
+    (t/is (= 14 (s/<!!? (:out1 graph))))
+    (t/is (= 15 (s/<!!? (get graph e))))))

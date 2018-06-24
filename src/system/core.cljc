@@ -101,20 +101,20 @@
   (let [res (match [prev x]
                    [nil (_ :guard map?)]
                    (do
-                     (print \" (:name x) \" " -> ")
-                     {:prev (:out x) :graph graph})
+                     (print (str \" (:name x) \") "->")
+                     {:prev (:out x) :graph (assoc graph x (:in x))})
 
-                   [nil (_ :guard keyword?)]
+                   [nil (_ :guard #(or (keyword? %) (string? %)))]
                    (do
-                     (print \" x \" " -> ")
+                     (print (str \" x \") "->")
                      (if (contains? graph x)
                        (let [in (get graph x)]
                          {:prev (connect-channels in)  :graph graph})
                        (let [c (as/chan)]
                          {:prev c :graph (assoc graph x c)})))
 
-                   [_ (_ :guard keyword?)]
-                   (do (print \" x \" " -> ")
+                   [_ (_ :guard #(or (keyword? %) (string? %)))]
+                   (do (print (str \" x \")  "->")
                        (if (contains? graph x)
                          (let [out (get graph x)]
                            {:prev (connect-channels prev out) :graph graph})
@@ -122,9 +122,9 @@
 
                    [_ (_ :guard map?)]
                    (do
-                     (print \" (:name x) \" " -> ")
+                     (print (str \" (:name x) \") "->")
                      (connect-channels prev (:in x))
-                     {:prev (:out x) :graph graph})
+                     {:prev (:out x) :graph (assoc graph x (:out x))})
 
                    [_ (_ :guard fn?)]
                    {:prev (x prev) :graph graph}

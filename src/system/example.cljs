@@ -91,21 +91,24 @@
 
 (def scheme
   [
-   [:state.in state-merger s/mult :state.out]
-   [:mounter.in hiccup-mounter :event.in]
-   [:event.in s/mult :event.out] ;format: [event-name origin value materialized]
-   [:event.out tick-updater :state.in]
-   [:event.out counter-updater :state.in]
-   [:state.out counter-materializer s/mult :materializer.counter]
-   [:materializer.counter counter-number :mounter.in]
-   [:materializer.counter counter-buttons :mounter.in]
-   [:state.out system-materializer ticker-signal :mounter.in]
-   [:ticker.in ticker :event.in]])
+   [state-merger s/mult "state.mult"]
+   ["event.in" s/mult "event.mult"] ;format: [event-name origin value materialized]
+   [hiccup-mounter "event-in"]
+   ["event.mult" tick-updater state-merger]
+   ["event.mult" counter-updater state-merger]
+   ["state.mult" counter-materializer s/mult "counter.mult"]
+   ["counter.mult" counter-number hiccup-mounter]
+   ["counter.mult" counter-buttons hiccup-mounter]
+   ["state.mult" system-materializer ticker-signal hiccup-mounter]
+   [ticker "event.in"]
+   ])
 
 (reset! graph (s/connect scheme))
 
+@graph
+
 ;; initial state
-(as/put! (:state.in @graph) {:counter {:number 0 } :system {:tick nil}})
+(as/put! (:in state-merger) {:counter {:number 0 } :system {:tick nil}})
 
 (defn on-js-reload []
   (println "reload!"))
