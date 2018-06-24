@@ -93,15 +93,16 @@
   [
    [state-merger s/mult "state.mult"]
    ["event.in" s/mult "event.mult"] ;format: [event-name origin value materialized]
-   [hiccup-mounter "event-in"]
+   [hiccup-mounter "event.in"]
+
    ["event.mult" tick-updater state-merger]
    ["event.mult" counter-updater state-merger]
+
    ["state.mult" counter-materializer s/mult "counter.mult"]
    ["counter.mult" counter-number hiccup-mounter]
    ["counter.mult" counter-buttons hiccup-mounter]
    ["state.mult" system-materializer ticker-signal hiccup-mounter]
-   [ticker "event.in"]
-   ])
+   [ticker "event.in"]])
 
 (reset! graph (s/connect scheme))
 
